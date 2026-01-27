@@ -1,0 +1,37 @@
+import streamlit as st
+from langchain.llms import Ollama
+from langchain.chains import ConversationChain
+from langchain.memory import ConversationSummaryMemory
+
+def main():
+    st.title("Chatbot with Summary Memory & System Prompt")
+
+    # Initialize memory once per session
+    if "memory" not in st.session_state:
+        st.session_state.memory = ConversationSummaryMemory(
+            llm=Ollama(model="llama3.2"),
+            memory_key="history",
+            return_messages=False
+        )
+
+    memory = st.session_state.memory
+    llm = Ollama(model="llama3.2")
+
+    # Initialize ConversationChain once per session
+    if "conv" not in st.session_state:
+        st.session_state.conv = ConversationChain(
+            llm=llm,
+            memory=memory,
+          
+        )
+        
+    conv = st.session_state.conv
+
+    # User input
+    user_input = st.text_input("Ask me anything:")
+    if user_input:
+        response = conv.run(user_input)
+        st.write(response)
+
+if __name__ == "__main__":
+    main()
