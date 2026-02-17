@@ -12,6 +12,8 @@ llm = ChatGroq(model="openai/gpt-oss-120b", temperature=1,timeout=30,max_tokens=
 agent = create_agent(
     model=llm,
     system_prompt="You are a helpful assistant.answer in less word",
+    
+    
 )
 while True:
     prompt = input("ask a question?\n")
