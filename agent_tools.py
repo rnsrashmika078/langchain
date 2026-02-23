@@ -1,34 +1,47 @@
-# pip install -qU langchain "langchain[anthropic]"
-# pip install -qU langchain langchain-groq ( -q less console output , U -> upgrade )
-from dotenv import load_dotenv
-from langchain.agents import create_agent
-from langchain_groq import ChatGroq
+import asyncio
 from langchain.tools import tool
+from langchain_groq import ChatGroq
+from langchain.agents import create_agent
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 
-load_dotenv()  # load environment variables
+load_dotenv()
 
-@tool
-def search(query: str) -> str:
-    """Search for information."""
-    return f"Results for: {query}"
+model = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
 
-@tool
+
+class GetWeather(BaseModel):
+    location: str = Field(..., description="Country and city")
+
+
+@tool(args_schema=GetWeather)
 def get_weather(location: str) -> str:
-    """Get weather information for a location."""
-    return f"Weather in {location}: Sunny, 72°F"
+    """(pretend as actual weather) weather in specific location"""
+    return f"Weather in {location}: Sunny, 30°C"
 
-llm = ChatGroq(model="llama-3.1-8b-instant", temperature=1,timeout=30,max_tokens=20)
 
-agent = create_agent(
-    model=llm,
-    tools=[get_weather, search],
-    system_prompt="You are a helpful assistant. always reply in less words. use given tools as possible",
-)
-while True:
-    prompt = input("ask a question?\n")
-    result = agent.invoke({"messages": [{"role": "user", "content": f"{prompt}"}]})
-    reply = result["messages"][-1].content
-    total_token = result["messages"][1].response_metadata["token_usage"]["total_tokens"]
-    print(f"{reply} ({total_token})")
+async def main():
+    prompt = input("\nAsk question: ")
+    tools = [get_weather]
 
-# Run the agent
+    agent = create_agent(
+        model=model,
+        tools=tools,
+        system_prompt="""
+        You are a helpful assistant.
+        Only use the tools I have provided. 
+        Do NOT invent any new tools. 
+        Answer directly if you don’t have a tool for the task.
+        """,
+    )
+
+    response = await agent.ainvoke({"messages": [{"role": "user", "content": prompt}]})
+
+    for msg in response["messages"]:
+        if msg.type == "tool":
+            print("Tool Response:", msg.content)
+
+    print(response["messages"][-1].content)
+
+
+asyncio.run(main())
